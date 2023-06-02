@@ -5,23 +5,77 @@ Credits to https://github.com/openai/baselines/blob/master/baselines/common/atar
 from typing import Tuple
 
 import gym
+from gym import spaces
 import numpy as np
 from PIL import Image
 
 
+class RosObservationEnvironment(gym.Env):
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.current_position = None
+        self.observation_space = spaces.Box(low=0, high=255, shape=(64, 64, 3), dtype=np.uint8)
+        self.action_space = spaces.Discrete(3)
+        self.reward_range = (0, 1.1)
+
+        self.frames = np.memmap(file_path, mode='r', dtype=np.uint8).reshape(-1, 64, 64, 3)
+        print(file_path, ':', len(self.frames), 'observations total')
+        self.num_frames = self.frames.shape[0]
+        self.reset()
+
+    def reset(self):
+        self.current_position = np.random.randint(0, self.num_frames-1)
+        return self._get_observation()
+
+    def step(self, action):
+        # Ignore agent actions and just return the next frame
+        self.current_position += 1
+
+        # Return the next frame
+        obs = self._get_observation()
+
+        # Check if we reached the end of the file
+        done = self.current_position >= (self.num_frames - 1)
+
+        # Truncate: if episodes are too long experience collector overflows
+        done = done or (self.current_position % 100 == 0)
+
+        # Fake the reward
+        reward = 1.0
+
+        return obs, reward, done, {}
+
+    def render(self, mode='rgb_array'):
+        return self._get_observation()
+
+    def _get_observation(self):
+        return self.frames[self.current_position]
+
+
+
 def make_atari(id, size=64, max_episode_steps=None, noop_max=30, frame_skip=4, done_on_life_loss=False, clip_reward=False):
-    env = gym.make(id)
-    assert 'NoFrameskip' in env.spec.id or 'Frameskip' not in env.spec
-    env = ResizeObsWrapper(env, (size, size))
-    if clip_reward:
-        env = RewardClippingWrapper(env)
-    if max_episode_steps is not None:
-        env = gym.wrappers.TimeLimit(env, max_episode_steps=max_episode_steps)
-    if noop_max is not None:
-        env = NoopResetEnv(env, noop_max=noop_max)
-    env = MaxAndSkipEnv(env, skip=frame_skip)
-    if done_on_life_loss:
-        env = EpisodicLifeEnv(env)
+    if id.startswith('ros:'):
+        env = RosObservationEnvironment(id[4:])
+        #env = ResizeObsWrapper(env, (size, size))
+        if clip_reward:
+            env = RewardClippingWrapper(env)
+        if max_episode_steps is not None:
+            env = gym.wrappers.TimeLimit(env, max_episode_steps=max_episode_steps)
+        env = MaxAndSkipEnv(env, skip=frame_skip)
+    else:
+        env = gym.make(id)
+        assert 'NoFrameskip' in env.spec.id or 'Frameskip' not in env.spec
+
+        env = ResizeObsWrapper(env, (size, size))
+        if clip_reward:
+            env = RewardClippingWrapper(env)
+        if max_episode_steps is not None:
+            env = gym.wrappers.TimeLimit(env, max_episode_steps=max_episode_steps)
+        if noop_max is not None:
+            env = NoopResetEnv(env, noop_max=noop_max)
+        env = MaxAndSkipEnv(env, skip=frame_skip)
+        if done_on_life_loss:
+            env = EpisodicLifeEnv(env)
     return env
 
 

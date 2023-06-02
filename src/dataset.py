@@ -48,7 +48,7 @@ class EpisodesDataset:
 
     def _popleft(self) -> Episode:
         id_to_delete = [k for k, v in self.episode_id_to_queue_idx.items() if v == 0]
-        assert len(id_to_delete) == 1
+        assert len(id_to_delete) == 1, id_to_delete
         self.newly_deleted_episodes.add(id_to_delete[0])
         self.episode_id_to_queue_idx = {k: v - 1 for k, v in self.episode_id_to_queue_idx.items() if v > 0}
         return self.episodes.popleft()

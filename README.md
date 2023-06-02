@@ -1,3 +1,12 @@
+## Twist Rollout fork
+
+This repo contains patched iris to train the tokenizer on a fixed dataset. Train using:
+
+```
+python src/main.py env.train.id=ros:/home/proger/iris/image.bin common.device=cuda:1 wandb.mode=online
+```
+
+
 # Transformers are Sample-Efficient World Models (IRIS)
 
 [Transformers are Sample-Efficient World Models](https://openreview.net/forum?id=vhFu1Acb0xb) <br>
